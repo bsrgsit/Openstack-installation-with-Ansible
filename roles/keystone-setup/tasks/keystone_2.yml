@@ -1,0 +1,64 @@
+- name: Creating the admin.rc file in the /root directory
+  os_project: name=admin domain=default description="Admin Project"
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Creating the admin.rc file in the /root directory
+  os_project: name={{ item.name }} domain=default description={{ item.description }}
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+  with_items:
+      - { name: "service",description: "Service Project" }
+      - { name: "demo",description: "Demo Project" }
+
+
+- name: Creating the users for the Openstack Setup
+  os_user: name={{ item.name }} domain=default password={{ item.password }}
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+  with_items:
+      - { name: "user",password: "admin123" }
+      - { name: "venkat",password: "admin123" }
+
+- name: Creating the roles for the Openstack cloud
+  os_keystone_role: state=present name=user
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Assigning the roles to the users
+  os_user_role: user=user role=admin project=demo
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Copying the Client side scripts for authentication
+  template: src=demo.rc dest=/root

@@ -1,0 +1,119 @@
+- name: Creating databases for the Nova service
+  mysql_db: name={{ item }} state=present login_user={{ mysql_username }} login_password={{ mysql_root_password }} 
+  with_items:
+    - nova_api
+    - nova
+ 
+- name: Setting up the permissions for the Nova databases
+  mysql_user:
+    name: "nova_api"
+    password: "{{ nova_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+    host: "{{ item }}"
+    login_user: "{{ mysql_username }}"
+    login_password: "{{ mysql_root_password }}"
+  with_items:
+    - "%" 
+    - "localhost"
+
+- name: Setting up permissions for the Nova databases
+  mysql_user:
+    name: "nova"
+    password: "{{ nova_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+    host: "{{ item }}"
+    login_user: "{{ mysql_username }}"
+    login_password: "{{ mysql_root_password }}"
+  with_items:
+    - "%"
+    - "localhost"
+
+
+- name: Creating nova user for managing the Nova Service
+  os_user: name=nova domain=default password=admin123
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Assigning admin access to the Nova user 
+  os_user_role: user=nova role=admin project=service
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Creating the Nova service for the Openstack Cloud
+  os_keystone_service:
+     state: present
+     name: nova
+     service_type: compute
+     description: OpenStack Compute Service
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Creating the endpoints for the Nova Service
+  shell: openstack endpoint create --region RegionOne compute {{ item }} http://{{ nova_host }}:8774/v2.1/%\(tenant_id\)s  && touch /root/.nova-{{ item }}-endpoint
+  args:
+     creates: /root/.nova-{{ item }}-endpoint
+  with_items:
+      - public
+      - internal
+      - admin
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+
+- name: Installing the required packages for the Nova service
+  apt: name={{ item }} state=installed update_cache=yes
+  with_items:
+    - nova-api 
+    - nova-conductor 
+    - nova-console 
+    - nova-novncproxy 
+    - nova-scheduler
+
+- name: configuring the Nova Service
+  template: src={{ item.source }} dest={{ item.destination }}
+  with_items:
+      - { source: "nova.conf",destination: "/etc/nova/nova.conf" }
+
+- name: Doing a database sync for Nova Service
+  command: '/bin/sh -c "nova-manage {{ item }} sync" nova'
+  with_items:
+      - api_db
+      - db
+
+- name: setting up the permissions for the Nova logs
+  file: path=/var/log/nova/ owner=nova group=nova recurse=yes
+
+- name: Starting the services required for the Nova
+  service: name={{ item }} state=started enabled=yes
+  with_items:
+      - nova-api
+      - nova-consoleauth 
+      - nova-scheduler
+      - nova-conductor 
+      - nova-novncproxy

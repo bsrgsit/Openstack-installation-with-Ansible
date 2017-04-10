@@ -1,0 +1,13 @@
+- name: Installing the necessary packages for the Compute service
+  apt: name=nova-compute state=installed update_cache=yes
+
+- name: configuring the Compute Service
+  template: src={{ item.source }} dest={{ item.destination }}
+  with_items:
+      - { source: "compute-nova.conf",destination: "/etc/nova/nova.conf" }
+
+- name: Starting the services necessary for the Compute
+  service: name={{ item }} state=started enabled=yes
+  with_items:
+      - libvirtd
+      - nova-compute

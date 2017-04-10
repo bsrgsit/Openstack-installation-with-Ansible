@@ -1,0 +1,49 @@
+- name: Creating a database for the Keystone service
+  mysql_db: name=keystone state=present login_user={{ mysql_username }} login_password={{ mysql_root_password }} 
+ 
+- name: Setting up permissions for the Keystone database
+  mysql_user:
+    name: "keystone"
+    password: "{{ keystone_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+    host: "{{ item }}"
+    login_user: "{{ mysql_username }}"
+    login_password: "{{ mysql_root_password }}"
+  with_items:
+    - "%"
+    - "localhost"
+
+- name: Installing the packages for the Keystone service
+  apt: name={{ item }} state=installed update_cache=yes
+  with_items:
+    - keystone 
+    - apache2 
+   
+- name: Configuring the Keystone service
+  template: src={{ item.src }} dest={{ item.dest }}
+  with_items:
+      - { src: keystone.conf,dest: /etc/keystone/keystone.conf }
+      - { src: apache2.conf,dest: /etc/apache2/apache2.conf }
+
+- name: Doing a database Sync for the Keystone Database
+  command: '/bin/sh -c "keystone-manage db_sync" keystone'
+
+- name: Initializing the Fernet key repositories
+  shell: keystone-manage {{ item }} --keystone-user keystone --keystone-group keystone
+  with_items:
+    - fernet_setup
+    - credential_setup
+
+- name: Bootstraping the Keystone Service
+  command: 'keystone-manage bootstrap --bootstrap-password {{ admin_password }} --bootstrap-admin-url http://{{ keystone_host }}:35357/v3/ --bootstrap-internal-url http://{{ keystone_host }}:35357/v3/ --bootstrap-public-url http://{{ keystone_host }}:5000/v3/ --bootstrap-region-id RegionOne'
+  
+
+#- name: Creating a Softlink to the wsgi-keystone.conf
+#  file: src="/usr/share/keystone/wsgi-keystone.conf" dest="/etc/httpd/conf.d/" state=link
+  
+- name: Starting the Apache Servie and Enabling them at the reboot
+  service: name=apache2 state=started enabled=yes
+
+- name: Creating the admin.rc file in the /root directory
+  template: src=admin.rc dest=/root

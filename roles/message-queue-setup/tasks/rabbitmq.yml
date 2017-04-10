@@ -1,0 +1,14 @@
+- name: Installing the Rabbitmq server for the Opensatack
+  apt: name=rabbitmq-server state=installed
+
+- name: Starting the services for the Rabbit MQ 
+  service: name=rabbitmq-server state=started enabled=yes
+  
+- name: Adding the openstack user to the RabbitMQ Server
+  rabbitmq_user: 
+    user: "{{ rabbitmq_user }}" 
+    password: "{{ rabbitmq_password }}"
+    configure_priv: .*
+    read_priv: .*
+    write_priv: .*
+    state: present

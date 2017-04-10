@@ -1,0 +1,20 @@
+- name: Installing the packages for the Networking service
+  apt: name={{ item }} state=installed update_cache=yes
+  with_items:
+      - openstack-neutron-linuxbridge 
+      - ebtables 
+      - ipset
+
+- name: Configuring the compute service to use the Networking
+  template: src=network-{{ item.src }} dest={{ item.destination }}
+  with_items:
+      - { src: "linuxbridge_agent.ini",destination: "/etc/neutron/plugins/ml2/linuxbridge_agent.ini" }
+      - { src: "neutron.conf", destination: "/etc/neutron/neutron.conf" }
+      - { src: "compute-nova.conf", destination: "/etc/nova/nova.conf" }
+
+
+- name: Restarting the nova-compute service
+  service: name=neutron-linuxbridge-agent status=restarted
+
+- name: starting the linux-bridge agent
+  service: name=nova-compute status=started enabled=yes

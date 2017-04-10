@@ -1,0 +1,7 @@
+[Controller]
+< ip address of the controller > ansible_python_interpreter="/root/ansible/bin/python"
+
+[Computes]
+< ip address of the controller > ansible_python_interpreter="/root/ansible/bin/python"
+
+[Network]

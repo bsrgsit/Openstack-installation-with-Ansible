@@ -1,0 +1,16 @@
+- name: Installing the NTP packages
+  apt: name=chrony state=installed
+  
+- name: Configuring the NTP server
+  lineinfile: dest=/etc/chrony.conf state=present line={{ item }}
+  with_items:
+    - "server {{ NTP_SERVER }} iburst"
+    - "allow {{ CLM_CIDR }}"
+  when: role == "controller"
+  
+- name: Configuring the NTP server
+  lineinfile: dest=/etc/chrony/chrony.conf state=present line="server {{ CONTROLLER_HOSTNAME }} iburst"
+  when: role != "controller"
+  
+- name: Starting the NTP service and making it persistent along the reboot
+  service: name=chrony state=started enabled=yes

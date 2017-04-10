@@ -1,0 +1,94 @@
+- name: Creating a database for the Glance service
+  mysql_db: name=glance state=present login_user={{ mysql_username }} login_password={{ mysql_root_password }} 
+ 
+- name: Setting up permissions for the Glance database
+  mysql_user:
+    name: "glance"
+    password: "{{ glance_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+    host: "{{ item }}"
+    login_user: "{{ mysql_username }}"
+    login_password: "{{ mysql_root_password }}"
+  with_items:
+    - "%"
+    - "localhost"
+
+- name: Creating the Glance user for the Openstack
+  os_user: name=glance domain=default password=admin123
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Assigning admin access to the Glance user
+  os_user_role: user=glance role=admin project=service
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Creating the Glance service for the Openstack
+  os_keystone_service:
+     state: present
+     name: glance
+     service_type: image
+     description: OpenStack Image Service
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+- name: Creating the endpoints for the Glance Service
+  shell: openstack endpoint create --region RegionOne image {{ item }} http://{{ glance_host }}:9292 && touch /root/.glance-{{ item }}-endpoint
+  args:
+     creates: /root/.glance-{{ item }}-endpoint
+  with_items:
+      - public
+      - internal
+      - admin
+  environment:
+      - OS_USERNAME: "admin"
+      - OS_PASSWORD: "{{ admin_password }}"
+      - OS_PROJECT_NAME: "admin"
+      - OS_USER_DOMAIN_NAME: "Default"
+      - OS_PROJECT_DOMAIN_NAME: "Default"
+      - OS_AUTH_URL: "http://{{ keystone_host }}:35357/v3"
+      - OS_IDENTITY_API_VERSION: "3"
+
+  
+
+- name: Installing the packages for the Glance service
+  apt: name={{ item }} state=installed update_cache=yes
+  with_items:
+    - glance 
+
+- name: Configuring the Glance service
+  template: src={{ item.source }} dest={{ item.destination }}
+  with_items:
+      - { source: "glance-api.conf",destination: "/etc/glance/glance-api.conf" }
+      - { source: "glance-registry.conf",destination: "/etc/glance/glance-registry.conf" }
+
+- name: Doing a database sync for the Glance service
+  command: '/bin/sh -c "glance-manage db_sync" glance'
+
+- name: Starting the services required for the Glance service
+  service: name={{ item }} state=started enabled=yes
+  with_items:
+      - glance-api
+      - glance-registry
+
+- name: Setting up accurate permissions for the Glance logs
+  file: path=/var/log/glance/ owner=glance group=glance recurse=yes

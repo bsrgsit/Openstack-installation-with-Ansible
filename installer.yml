@@ -1,0 +1,17 @@
+- hosts: openstack
+  become: True
+  become_method: sudo
+
+  roles:
+#     - environment-setup
+#     - ntp-setup
+#     - database-setup
+#     - message-queue-setup
+#     - memcached-setup
+#     - keystone-setup
+#     - glance-setup
+#     - nova-controller-setup
+#     - nova-compute-setup
+#     - neutron-controller-setup
+     - nova-compute-setup
+

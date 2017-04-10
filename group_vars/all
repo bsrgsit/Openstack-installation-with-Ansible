@@ -1,0 +1,32 @@
+http_proxy: 
+NTP_SERVER: 192.168.122.60 
+CLM_CIDR: 192.168.122.2/24
+CONTROLLER_HOSTNAME: ubuntu-16
+mysql_root_password: admin123 
+rabbitmq_user: admin
+rabbitmq_password: admin123
+role: 
+mysql_username: root
+admin_password: admin123
+keystone_password: admin123
+glance_password: admin123
+database_host: controller
+keystone_host: controller
+glance_db_password: admin123
+memcached_host: controller
+glance_filesystem_store: /var/lib/glance/images/ 
+nova_db_password: admin123
+rabbitmq_host: controller
+glance_host: controller 
+nova_password: admin123 
+nova_host_ip: 192.168.122.60
+nova_compute_host_ip: 192.168.122.60 
+neutron_db_password: admin123 
+neutron_password: admin123
+tunnel_ip_address: 192.168.122.60
+provider_interface: ens4 
+nova_host: controller
+metadata_proxy_shared_key: 
+neutron_host: controller
+compute_provider_interface: ens4
+compute_tunnel_ip_address: 192.168.122.60

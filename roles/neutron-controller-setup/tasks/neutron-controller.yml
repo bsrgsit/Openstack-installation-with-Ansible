@@ -1,0 +1,5 @@
+- name: Configuring the Controller to use the neutron service
+  template: src=network-nova.conf dest=/etc/nova/nova.conf
+
+- name: Restarting the Compute api service
+  service: name=nova-api state=restarted
